@@ -1,0 +1,39 @@
+services:
+  api_gateway:
+    image: docker.io/library/nginx:alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./api-gateway/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - customers
+
+  customers_db:
+    image: docker.io/library/postgres:17-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: customers_db
+    healthcheck:
+      test: "pg_isready -h customers_db"
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+  customers:
+    build: ../customers
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@customers_db:5432/customers_db
+    depends_on:
+      customers_db:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ../customers/src
+          target: /customers/src
+
