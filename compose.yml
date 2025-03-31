@@ -8,6 +8,7 @@ services:
     depends_on:
       - customers
       - inventory
+      - orders
 
   customers_db:
     image: docker.io/library/postgres:17-alpine
@@ -66,4 +67,37 @@ services:
         - action: sync
           path: ../inventory/src
           target: /inventory/src
+
+  orders_db:
+    image: docker.io/library/postgres:17-alpine
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orders_db
+    healthcheck:
+      test: "pg_isready -h orders_db"
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+  orders:
+    build: ../orders
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@orders_db:5432/orders_db
+      INVENTORY_BASE_URL: http://inventory:8000
+    depends_on:
+      orders_db:
+        condition: service_healthy
+      inventory:
+        condition: service_started
+
+    develop:
+      watch:
+        - action: sync
+          path: ../orders/src
+          target: /orders/src
 
