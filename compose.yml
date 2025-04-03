@@ -38,6 +38,7 @@ services:
       - customers
       - inventory
       - orders
+      - notifications
 
   customers_db:
     image: docker.io/library/postgres:17-alpine
@@ -132,4 +133,46 @@ services:
         - action: sync
           path: ../orders/src
           target: /orders/src
+
+  notifications_db:
+    image: docker.io/library/postgres:17-alpine
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notifications_db
+    healthcheck:
+      test: "pg_isready -h notifications_db"
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+  notifications:
+    build: ../notifications
+    ports:
+      - "8003:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@notifications_db:5432/notifications_db
+    depends_on:
+      notifications_db:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ../notifications/src
+          target: /notifications/src
+
+  notifications-kafka-consumer:
+    build: ../notifications
+    command: sh -c "cd src && python -m kafka.consumer"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@notifications_db:5432/notifications_db
+      KAFKA_SERVER: "kafka:9092"
+      KAFKA_ORDERS_TOPIC: orders
+    depends_on:
+      notifications_db:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
 
