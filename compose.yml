@@ -35,39 +35,48 @@ services:
     volumes:
       - ./api-gateway/nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-      - customers
+      - users
+      - inventory
+      - orders
+      - notifications
+      - swagger_ui
+
+  swagger_ui:
+    image: docker.io/swaggerapi/swagger-ui
+    environment:
+      API_URLS: '[{"url": "/users/openapi.json", "name": "Users"}, {"url": "/inventory/openapi.json", "name": "Inventory"}, {"url": "/orders/openapi.json", "name": "Orders"}, {"url": "/notifications/openapi.json", "name": "Notifications"}]'
+    depends_on:
+      - users
       - inventory
       - orders
       - notifications
 
-  customers_db:
+  users_db:
     image: docker.io/library/postgres:17-alpine
     ports:
       - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: customers_db
+      POSTGRES_DB: users_db
     healthcheck:
-      test: "pg_isready -h customers_db"
+      test: "pg_isready -h users_db"
       interval: 1s
       timeout: 5s
       retries: 10
 
-  customers:
-    build: ../customers
-    ports:
-      - "8000:8000"
+  users:
+    build: ../users
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@customers_db:5432/customers_db
+      DATABASE_URL: postgresql://postgres:postgres@users_db:5432/users_db
     depends_on:
-      customers_db:
+      users_db:
         condition: service_healthy
     develop:
       watch:
         - action: sync
-          path: ../customers/src
-          target: /customers/src
+          path: ../users/src
+          target: /users/src
 
   inventory_db:
     image: docker.io/library/postgres:17-alpine
@@ -85,8 +94,6 @@ services:
 
   inventory:
     build: ../inventory
-    ports:
-      - "8001:8000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@inventory_db:5432/inventory_db
     depends_on:
@@ -114,8 +121,6 @@ services:
 
   orders:
     build: ../orders
-    ports:
-      - "8002:8000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@orders_db:5432/orders_db
       INVENTORY_BASE_URL: http://inventory:8000
@@ -150,8 +155,6 @@ services:
 
   notifications:
     build: ../notifications
-    ports:
-      - "8003:8000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@notifications_db:5432/notifications_db
     depends_on:
