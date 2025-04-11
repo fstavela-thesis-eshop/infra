@@ -62,12 +62,17 @@ services:
       retries: 10
 
   users:
-    image: docker.io/fstavela/thesis-eshop-users:latest
+    build: ../users
     environment:
       DATABASE_URL: postgresql://postgres:postgres@users_db:5432/users_db
     depends_on:
       users_db:
         condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ../users/src
+          target: /users/src
 
   inventory_db:
     image: docker.io/library/postgres:17-alpine
@@ -82,12 +87,17 @@ services:
       retries: 10
 
   inventory:
-    image: docker.io/fstavela/thesis-eshop-inventory:latest
+    build: ../inventory
     environment:
       DATABASE_URL: postgresql://postgres:postgres@inventory_db:5432/inventory_db
     depends_on:
       inventory_db:
         condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ../inventory/src
+          target: /inventory/src
 
   orders_db:
     image: docker.io/library/postgres:17-alpine
@@ -102,7 +112,7 @@ services:
       retries: 10
 
   orders:
-    image: docker.io/fstavela/thesis-eshop-orders:latest
+    build: ../orders
     environment:
       DATABASE_URL: postgresql://postgres:postgres@orders_db:5432/orders_db
       INVENTORY_BASE_URL: http://inventory:8000
@@ -115,6 +125,11 @@ services:
         condition: service_started
       kafka-init:
         condition: service_completed_successfully
+    develop:
+      watch:
+        - action: sync
+          path: ../orders/src
+          target: /orders/src
 
   notifications_db:
     image: docker.io/library/postgres:17-alpine
@@ -129,15 +144,20 @@ services:
       retries: 10
 
   notifications:
-    image: docker.io/fstavela/thesis-eshop-notifications:latest
+    build: ../notifications
     environment:
       DATABASE_URL: postgresql://postgres:postgres@notifications_db:5432/notifications_db
     depends_on:
       notifications_db:
         condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ../notifications/src
+          target: /notifications/src
 
   notifications-kafka-consumer:
-    image: docker.io/fstavela/thesis-eshop-notifications:latest
+    build: ../notifications
     command: sh -c "cd src && python -m kafka.consumer"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@notifications_db:5432/notifications_db
