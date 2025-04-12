@@ -27,7 +27,7 @@ services:
       "
 
   api_gateway:
-    image: docker.io/library/nginx:alpine
+    image: docker.io/library/nginx:1.27-alpine
     ports:
       - "8080:8080"
     volumes:
